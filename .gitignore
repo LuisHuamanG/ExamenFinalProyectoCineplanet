@@ -1,0 +1,15 @@
+
+# Archivos compilados de Java
+/build/
+/dist/
+/*.class
+
+# Archivos locales de NetBeans
+/nbproject/private/
+
+# Archivos temporales del sistema
+Thumbs.db
+.DS_Store
+
+# Configuración local con credenciales
+config.local.properties
