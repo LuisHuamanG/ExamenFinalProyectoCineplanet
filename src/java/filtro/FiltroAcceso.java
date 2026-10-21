@@ -1,4 +1,3 @@
-
 package filtro;
 
 import dao.AuditoriaDAO;
@@ -15,16 +14,20 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-@WebFilter(urlPatterns = {
+@WebFilter(filterName = "FiltroAcceso", urlPatterns = {
     "/admin/*",
     "/cajero/*",
-    "/cliente/*"
+    "/cliente/*",
+    "/VentaServlet",
+    "/AuditoriaServlet",
+    "/comprobante",
+    "/carrito",
+    "/tienda"
 })
 public class FiltroAcceso implements Filter {
 
     @Override
-    public void init(FilterConfig filtroConfig)
-            throws ServletException {
+    public void init(FilterConfig filtroConfig) throws ServletException {
     }
 
     @Override
@@ -34,23 +37,21 @@ public class FiltroAcceso implements Filter {
             FilterChain cadena)
             throws IOException, ServletException {
 
-        HttpServletRequest request =
-                (HttpServletRequest) solicitud;
+        HttpServletRequest request = (HttpServletRequest) solicitud;
+        HttpServletResponse response = (HttpServletResponse) respuesta;
 
-        HttpServletResponse response =
-                (HttpServletResponse) respuesta;
-
-        // Cabeceras de seguridad
+        // Cabeceras anti-caché y seguridad exigidas
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("X-Frame-Options", "DENY");
-        response.setHeader("Cache-Control", "no-store");
 
         HttpSession sesion = request.getSession(false);
 
-        // Si no existe una sesión autenticada, solicitar login.
+        // Si no existe una sesión autenticada, redirigir a login
         if (sesion == null || sesion.getAttribute("rol") == null) {
-            response.sendRedirect(
-                    request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
 
@@ -59,33 +60,28 @@ public class FiltroAcceso implements Filter {
 
         boolean accesoPermitido = true;
 
-        // Solo ADMIN puede acceder al panel administrativo.
-        if (ruta.startsWith("/admin/")
+        // 1. Solo ADMIN puede acceder a /admin/, /VentaServlet y /AuditoriaServlet
+        if ((ruta.startsWith("/admin/") || ruta.equals("/VentaServlet") || ruta.equals("/AuditoriaServlet"))
                 && !"ADMIN".equals(rol)) {
             accesoPermitido = false;
         }
 
-        // ADMIN y CAJERO pueden acceder al área de caja.
-        if (ruta.startsWith("/cajero/")
-                && !("ADMIN".equals(rol)
-                || "CAJERO".equals(rol))) {
+        // 2. Solo CAJERO (y ADMIN) pueden acceder al área de caja
+        if (ruta.startsWith("/cajero/") && !("ADMIN".equals(rol) || "CAJERO".equals(rol))) {
             accesoPermitido = false;
         }
 
-        // Solo CLIENTE puede acceder a su área personal.
-        if (ruta.startsWith("/cliente/")
+        // 3. Solo CLIENTE puede acceder a su área y compras
+        if ((ruta.startsWith("/cliente/") || ruta.equals("/comprobante") || ruta.equals("/carrito") || ruta.equals("/tienda"))
                 && !"CLIENTE".equals(rol)) {
             accesoPermitido = false;
         }
 
         if (!accesoPermitido) {
-
             registrarAccesoDenegado(request, sesion, ruta);
-
             response.sendError(
                     HttpServletResponse.SC_FORBIDDEN,
                     "Acceso denegado.");
-
             return;
         }
 
@@ -97,9 +93,7 @@ public class FiltroAcceso implements Filter {
             HttpSession sesion,
             String ruta) {
 
-        Object identificadorSesion =
-                sesion.getAttribute("identificador");
-
+        Object identificadorSesion = sesion.getAttribute("identificador");
         String usuario = identificadorSesion == null
                 ? "DESCONOCIDO"
                 : identificadorSesion.toString();
@@ -109,18 +103,14 @@ public class FiltroAcceso implements Filter {
 
         try {
             AuditoriaDAO auditoria = new AuditoriaDAO();
-
             auditoria.registrar(
                     usuario,
                     "ACCESO_DENEGADO",
                     detalle,
                     request.getRemoteAddr()
             );
-
         } catch (SQLException e) {
-            // No revelar detalles de la base de datos al usuario.
-            request.getServletContext().log(
-                    "No se pudo registrar el acceso denegado.", e);
+            request.getServletContext().log("No se pudo registrar el acceso denegado.", e);
         }
     }
 
