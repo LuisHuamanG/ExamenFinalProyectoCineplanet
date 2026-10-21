@@ -13,3 +13,5 @@ Thumbs.db
 
 # Configuración local con credenciales
 config.local.properties
+config.bat
+node_modules
