@@ -1,4 +1,3 @@
-
 package controlador;
 
 import dao.AuditoriaDAO;
@@ -52,14 +51,13 @@ public class LoginServlet extends HttpServlet {
                 || clave.isEmpty()) {
 
             request.setAttribute("mensaje",
-                "Usuario o clave incorrectos");
+                    "Usuario o clave incorrectos");
             request.getRequestDispatcher("/login.jsp")
                     .forward(request, response);
             return;
         }
 
         identificador = identificador.trim();
-
         String ip = request.getRemoteAddr();
 
         try {
@@ -71,7 +69,7 @@ public class LoginServlet extends HttpServlet {
                         ip);
 
                 request.setAttribute("mensaje",
-                        "No se pudo iniciar sesión. Intente nuevamente más tarde.");
+                        "Usuario bloqueado por 3 intentos fallidos. Intente en 5 minutos.");
                 request.getRequestDispatcher("/login.jsp")
                         .forward(request, response);
                 return;
@@ -151,10 +149,13 @@ public class LoginServlet extends HttpServlet {
                         "BLOQUEO",
                         "Cuenta bloqueada por tres intentos fallidos",
                         ip);
+                request.setAttribute("mensaje",
+                        "Usuario bloqueado por 3 intentos fallidos. Intente en 5 minutos.");
+            } else {
+                request.setAttribute("mensaje",
+                        "Usuario o clave incorrectos");
             }
 
-            request.setAttribute("mensaje",
-                    "No se pudo iniciar sesión. Verifique sus datos.");
             request.getRequestDispatcher("/login.jsp")
                     .forward(request, response);
 
